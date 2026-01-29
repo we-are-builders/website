@@ -1,9 +1,4 @@
-import {
-	SignedIn,
-	SignedOut,
-	SignIn,
-	SignInButton,
-} from "@clerk/tanstack-react-start";
+import { SignedOut, SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowRight, Calendar, Mic2, Sparkles, Users } from "lucide-react";

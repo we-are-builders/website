@@ -14,6 +14,7 @@ import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_emails from "../lib/emails.js";
+import type * as lib_mentions from "../lib/mentions.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as notificationsNode from "../notificationsNode.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   "lib/auth": typeof lib_auth;
   "lib/emails": typeof lib_emails;
+  "lib/mentions": typeof lib_mentions;
   messages: typeof messages;
   notifications: typeof notifications;
   notificationsNode: typeof notificationsNode;
