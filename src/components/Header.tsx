@@ -45,6 +45,7 @@ export default function Header() {
 			<header className="p-4 flex items-center justify-between bg-sidebar text-sidebar-foreground shadow-lg">
 				<div className="flex items-center">
 					<button
+						type="button"
 						onClick={() => setIsOpen(true)}
 						className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
 						aria-label="Open menu"
@@ -53,7 +54,8 @@ export default function Header() {
 					</button>
 					<h1 className="ml-4 text-xl font-semibold">
 						<Link to="/" className="flex items-center gap-2">
-							<span className="text-sidebar-primary font-bold">
+							<span className="text-sidebar-primary font-bold flex items-center gap-2">
+								<img src="/logo512.png" alt="Logo" className="size-9" />
 								We Are Builders
 							</span>
 						</Link>
@@ -88,6 +90,7 @@ export default function Header() {
 				<div className="flex items-center justify-between p-4 border-b border-sidebar-border">
 					<h2 className="text-xl font-bold">Navigation</h2>
 					<button
+						type="button"
 						onClick={() => setIsOpen(false)}
 						className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
 						aria-label="Close menu"
@@ -196,9 +199,11 @@ export default function Header() {
 
 			{/* Overlay */}
 			{isOpen && (
-				<div
-					className="fixed inset-0 bg-black/50 z-40"
+				<button
+					type="button"
+					className="fixed inset-0 bg-black/50 z-40 cursor-default"
 					onClick={() => setIsOpen(false)}
+					aria-label="Close menu"
 				/>
 			)}
 		</>

@@ -355,3 +355,42 @@ export function presentationSubmittedEmail(
 		`.trim(),
 	};
 }
+
+// Email template: Mention notification
+export function mentionEmail(
+	event: Doc<"events">,
+	sourceUser: Doc<"users">,
+	messageContent: string,
+): {
+	subject: string;
+	html: string;
+} {
+	const eventUrl = `${getAppUrl()}/events/${event._id}`;
+	const truncatedMessage =
+		messageContent.length > 200
+			? `${messageContent.substring(0, 200)}...`
+			: messageContent;
+
+	return {
+		subject: `${sourceUser.name} mentioned you in ${event.title}`,
+		html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+  <h1 style="color: #2563eb;">You were mentioned!</h1>
+  <p><strong>${sourceUser.name}</strong> mentioned you in a chat message for <strong>${event.title}</strong>.</p>
+  <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+    <p style="margin: 0; color: #4b5563; font-style: italic;">"${truncatedMessage}"</p>
+  </div>
+  <a href="${eventUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Conversation</a>
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+  <p style="color: #6b7280; font-size: 14px;">WeAreBuilders - Community Events Platform</p>
+</body>
+</html>
+		`.trim(),
+	};
+}

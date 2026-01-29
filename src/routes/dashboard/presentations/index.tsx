@@ -200,8 +200,8 @@ function PresentationsContent() {
 
 				{myPresentations === undefined ? (
 					<div className="space-y-4">
-						{[...Array(3)].map((_, i) => (
-							<Skeleton key={i} className="h-32" />
+						{["s-1", "s-2", "s-3"].map((key) => (
+							<Skeleton key={key} className="h-32" />
 						))}
 					</div>
 				) : myPresentations.length === 0 ? (

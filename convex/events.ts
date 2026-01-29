@@ -119,7 +119,9 @@ export const create = mutation({
 		description: v.string(),
 		date: v.number(),
 		endDate: v.optional(v.number()),
+		dateTBD: v.optional(v.boolean()),
 		location: v.string(),
+		locationTBD: v.optional(v.boolean()),
 		isVirtual: v.boolean(),
 		latitude: v.optional(v.number()),
 		longitude: v.optional(v.number()),
@@ -135,33 +137,42 @@ export const create = mutation({
 			throw new Error("Unauthorized");
 		}
 
-		// Validate endDate is after date
-		if (args.endDate !== undefined && args.endDate <= args.date) {
+		// Validate endDate is after date (skip if dateTBD)
+		if (
+			!args.dateTBD &&
+			args.endDate !== undefined &&
+			args.endDate <= args.date
+		) {
 			throw new Error("End date must be after start date");
 		}
 
 		const now = Date.now();
 
 		// Auto-default voting deadline to 24 hours before event start if not provided
-		const votingDeadline =
-			args.votingDeadline ?? args.date - 24 * 60 * 60 * 1000;
+		// Skip auto-default if dateTBD is true
+		const votingDeadline = args.dateTBD
+			? undefined
+			: (args.votingDeadline ?? args.date - 24 * 60 * 60 * 1000);
 
-		// Clear coordinates for virtual events
-		const locationData = args.isVirtual
-			? {}
-			: {
-					latitude: args.latitude,
-					longitude: args.longitude,
-					placeId: args.placeId,
-					formattedAddress: args.formattedAddress,
-				};
+		// Clear coordinates for virtual events or when locationTBD is true
+		const locationData =
+			args.isVirtual || args.locationTBD
+				? {}
+				: {
+						latitude: args.latitude,
+						longitude: args.longitude,
+						placeId: args.placeId,
+						formattedAddress: args.formattedAddress,
+					};
 
 		const eventId = await ctx.db.insert("events", {
 			title: args.title,
 			description: args.description,
 			date: args.date,
 			endDate: args.endDate,
+			dateTBD: args.dateTBD,
 			location: args.location,
+			locationTBD: args.locationTBD,
 			isVirtual: args.isVirtual,
 			...locationData,
 			imageId: args.imageId,
@@ -184,7 +195,9 @@ export const update = mutation({
 		description: v.optional(v.string()),
 		date: v.optional(v.number()),
 		endDate: v.optional(v.number()),
+		dateTBD: v.optional(v.boolean()),
 		location: v.optional(v.string()),
+		locationTBD: v.optional(v.boolean()),
 		isVirtual: v.optional(v.boolean()),
 		latitude: v.optional(v.number()),
 		longitude: v.optional(v.number()),
@@ -210,10 +223,17 @@ export const update = mutation({
 		const oldEndDate = event.endDate;
 		const oldLocation = event.formattedAddress || event.location;
 
-		// Validate endDate is after date
+		// Check if dateTBD is being resolved (was true, now false)
+		const effectiveDateTBD = args.dateTBD ?? event.dateTBD;
+
+		// Validate endDate is after date (skip if dateTBD)
 		const effectiveDate = args.date ?? event.date;
 		const effectiveEndDate = args.endDate ?? event.endDate;
-		if (effectiveEndDate !== undefined && effectiveEndDate <= effectiveDate) {
+		if (
+			!effectiveDateTBD &&
+			effectiveEndDate !== undefined &&
+			effectiveEndDate <= effectiveDate
+		) {
 			throw new Error("End date must be after start date");
 		}
 
@@ -231,14 +251,16 @@ export const update = mutation({
 			description: string;
 			date: number;
 			endDate: number;
+			dateTBD: boolean;
 			location: string;
+			locationTBD: boolean;
 			isVirtual: boolean;
 			latitude: number | undefined;
 			longitude: number | undefined;
 			placeId: string | undefined;
 			formattedAddress: string | undefined;
 			imageId: typeof args.imageId;
-			votingDeadline: number;
+			votingDeadline: number | undefined;
 			updatedAt: number;
 		}> = {
 			updatedAt: Date.now(),
@@ -248,7 +270,9 @@ export const update = mutation({
 		if (args.description !== undefined) updates.description = args.description;
 		if (args.date !== undefined) updates.date = args.date;
 		if (args.endDate !== undefined) updates.endDate = args.endDate;
+		if (args.dateTBD !== undefined) updates.dateTBD = args.dateTBD;
 		if (args.location !== undefined) updates.location = args.location;
+		if (args.locationTBD !== undefined) updates.locationTBD = args.locationTBD;
 		if (args.imageId !== undefined) updates.imageId = args.imageId;
 		if (args.votingDeadline !== undefined)
 			updates.votingDeadline = args.votingDeadline;
@@ -265,9 +289,18 @@ export const update = mutation({
 			}
 		}
 
-		// Only update coordinates for physical events
+		// Handle locationTBD toggle - clear coordinates when setting to TBD
+		const effectiveLocationTBD = args.locationTBD ?? event.locationTBD;
+		if (effectiveLocationTBD) {
+			updates.latitude = undefined;
+			updates.longitude = undefined;
+			updates.placeId = undefined;
+			updates.formattedAddress = undefined;
+		}
+
+		// Only update coordinates for physical events that are not locationTBD
 		const effectiveIsVirtual = args.isVirtual ?? event.isVirtual;
-		if (!effectiveIsVirtual) {
+		if (!effectiveIsVirtual && !effectiveLocationTBD) {
 			if (args.latitude !== undefined) updates.latitude = args.latitude;
 			if (args.longitude !== undefined) updates.longitude = args.longitude;
 			if (args.placeId !== undefined) updates.placeId = args.placeId;
@@ -418,6 +451,11 @@ export const updateEventStatuses = internalMutation({
     for (const event of events) {
       // Skip cancelled events (manual override preserved)
       if (event.status === "cancelled") {
+        continue;
+      }
+
+      // Skip events with TBD dates (keep as "upcoming")
+      if (event.dateTBD) {
         continue;
       }
 

@@ -84,18 +84,23 @@ function EventDetailPage() {
 	}
 
 	const eventDate = new Date(event.date);
-	const formattedDate = eventDate.toLocaleDateString("en-US", {
-		weekday: "long",
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	});
-	const formattedTime = eventDate.toLocaleTimeString("en-US", {
-		hour: "numeric",
-		minute: "2-digit",
-	});
+	const formattedDate = event.dateTBD
+		? null
+		: eventDate.toLocaleDateString("en-US", {
+				weekday: "long",
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			});
+	const formattedTime = event.dateTBD
+		? null
+		: eventDate.toLocaleTimeString("en-US", {
+				hour: "numeric",
+				minute: "2-digit",
+			});
 
-	const endDate = event.endDate ? new Date(event.endDate) : null;
+	const endDate =
+		event.endDate && !event.dateTBD ? new Date(event.endDate) : null;
 	const formattedEndTime = endDate
 		? endDate.toLocaleTimeString("en-US", {
 				hour: "numeric",
@@ -153,25 +158,33 @@ function EventDetailPage() {
 					<div className="flex flex-wrap gap-4 text-muted-foreground mb-6">
 						<div className="flex items-center gap-2">
 							<Calendar className="h-5 w-5" />
-							<span>{formattedDate}</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<Clock className="h-5 w-5" />
 							<span>
-								{formattedTime}
-								{formattedEndTime && ` - ${formattedEndTime}`}
-								{formattedEndDate &&
-									formattedEndDate !== formattedDate &&
-									` (${formattedEndDate})`}
+								{event.dateTBD ? "Date to be determined" : formattedDate}
 							</span>
 						</div>
+						{!event.dateTBD && (
+							<div className="flex items-center gap-2">
+								<Clock className="h-5 w-5" />
+								<span>
+									{formattedTime}
+									{formattedEndTime && ` - ${formattedEndTime}`}
+									{formattedEndDate &&
+										formattedEndDate !== formattedDate &&
+										` (${formattedEndDate})`}
+								</span>
+							</div>
+						)}
 						<div className="flex items-center gap-2">
 							{event.isVirtual ? (
 								<Video className="h-5 w-5" />
 							) : (
 								<MapPin className="h-5 w-5" />
 							)}
-							<span>{event.location}</span>
+							<span>
+								{event.locationTBD
+									? "Location to be determined"
+									: event.location}
+							</span>
 						</div>
 						<div className="flex items-center gap-2">
 							<Users className="h-5 w-5" />
@@ -199,25 +212,28 @@ function EventDetailPage() {
 					</CardContent>
 				</Card>
 
-				{/* Event Location Map (physical events only) */}
-				{!event.isVirtual && event.latitude && event.longitude && (
-					<Card className="mb-8">
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								<MapPin className="h-5 w-5" />
-								Location
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<EventLocationMap
-								latitude={event.latitude}
-								longitude={event.longitude}
-								address={event.formattedAddress ?? event.location}
-								placeId={event.placeId}
-							/>
-						</CardContent>
-					</Card>
-				)}
+				{/* Event Location Map (physical events only, when location is not TBD) */}
+				{!event.isVirtual &&
+					!event.locationTBD &&
+					event.latitude &&
+					event.longitude && (
+						<Card className="mb-8">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<MapPin className="h-5 w-5" />
+									Location
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<EventLocationMap
+									latitude={event.latitude}
+									longitude={event.longitude}
+									address={event.formattedAddress ?? event.location}
+									placeId={event.placeId}
+								/>
+							</CardContent>
+						</Card>
+					)}
 
 				{/* Vote on Presentations */}
 				{event.status === "upcoming" &&
@@ -271,8 +287,8 @@ function EventDetailPage() {
 					<CardContent>
 						{presentations === undefined ? (
 							<div className="space-y-4">
-								{[...Array(2)].map((_, i) => (
-									<Skeleton key={i} className="h-24 w-full" />
+								{["s-1", "s-2"].map((key) => (
+									<Skeleton key={key} className="h-24 w-full" />
 								))}
 							</div>
 						) : presentations.length === 0 ? (
@@ -333,8 +349,8 @@ function EventDetailPage() {
 					<CardContent>
 						{attendees === undefined ? (
 							<div className="flex gap-2">
-								{[...Array(5)].map((_, i) => (
-									<Skeleton key={i} className="h-10 w-10 rounded-full" />
+								{["s-1", "s-2", "s-3", "s-4", "s-5"].map((key) => (
+									<Skeleton key={key} className="h-10 w-10 rounded-full" />
 								))}
 							</div>
 						) : attendees.length === 0 ? (
@@ -372,7 +388,6 @@ function EventDetailPage() {
 				{/* Event Chat */}
 				<EventChat
 					eventId={eventId as Id<"events">}
-					eventDate={event.date}
 					eventStatus={event.status}
 				/>
 			</div>

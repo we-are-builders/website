@@ -24,7 +24,9 @@ export default defineSchema({
     description: v.string(),
     date: v.number(), // timestamp (start time)
     endDate: v.optional(v.number()), // timestamp (end time)
+    dateTBD: v.optional(v.boolean()), // true if date/time is to be determined
     location: v.string(), // physical location or virtual link
+    locationTBD: v.optional(v.boolean()), // true if location is to be determined
     isVirtual: v.boolean(),
     latitude: v.optional(v.number()), // coordinates for physical locations
     longitude: v.optional(v.number()),
@@ -95,8 +97,22 @@ export default defineSchema({
     eventId: v.id("events"),
     userId: v.id("users"),
     content: v.string(),
+    mentions: v.optional(v.array(v.id("users"))),
     createdAt: v.number(),
   })
     .index("by_event", ["eventId"])
     .index("by_event_and_time", ["eventId", "createdAt"]),
+
+  // Notifications table - for real-time mention notifications
+  notifications: defineTable({
+    userId: v.id("users"), // recipient
+    type: v.literal("mention"),
+    sourceUserId: v.id("users"), // who triggered the notification
+    eventId: v.id("events"),
+    messageId: v.optional(v.id("messages")),
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_user_unread", ["userId", "read"])
+    .index("by_user", ["userId"]),
 });

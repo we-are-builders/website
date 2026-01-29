@@ -24,16 +24,20 @@ interface EventCardProps {
 
 export function EventCard({ event }: EventCardProps) {
 	const eventDate = new Date(event.date);
-	const formattedDate = eventDate.toLocaleDateString("en-US", {
-		weekday: "long",
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	});
-	const formattedTime = eventDate.toLocaleTimeString("en-US", {
-		hour: "numeric",
-		minute: "2-digit",
-	});
+	const formattedDate = event.dateTBD
+		? "Date TBD"
+		: eventDate.toLocaleDateString("en-US", {
+				weekday: "long",
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			});
+	const formattedTime = event.dateTBD
+		? ""
+		: eventDate.toLocaleTimeString("en-US", {
+				hour: "numeric",
+				minute: "2-digit",
+			});
 
 	return (
 		<Card className="hover:shadow-lg transition-shadow overflow-hidden">
@@ -66,7 +70,9 @@ export function EventCard({ event }: EventCardProps) {
 					<CardTitle className="text-xl">{event.title}</CardTitle>
 					<CardDescription className="flex items-center gap-2">
 						<Calendar className="h-4 w-4" />
-						{formattedDate} at {formattedTime}
+						{event.dateTBD
+							? "Date TBD"
+							: `${formattedDate} at ${formattedTime}`}
 					</CardDescription>
 				</div>
 			</CardHeader>
@@ -80,7 +86,7 @@ export function EventCard({ event }: EventCardProps) {
 					) : (
 						<MapPin className="h-4 w-4" />
 					)}
-					<span>{event.location}</span>
+					<span>{event.locationTBD ? "Location TBD" : event.location}</span>
 				</div>
 				{event.attendeeCount !== undefined && (
 					<div className="flex items-center gap-2 text-sm text-muted-foreground">

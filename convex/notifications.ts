@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
 	resend,
@@ -10,7 +10,9 @@ import {
 	presentationSubmittedEmail,
 	presentationAcceptedEmail,
 	presentationRejectedEmail,
+	mentionEmail,
 } from "./lib/emails";
+import { getCurrentUser, requireUser } from "./lib/auth";
 
 // Helper to get all attendees with their email addresses for an event
 async function getAttendeesWithEmails(
@@ -328,6 +330,143 @@ export const sendPresentationResultEmail = internalMutation({
 				`Failed to send presentation result email to ${presenter.email}:`,
 				error,
 			);
+		}
+	},
+});
+
+// ===== MENTION NOTIFICATIONS =====
+
+// Internal mutation to send mention notifications
+export const sendMentionNotifications = internalMutation({
+	args: {
+		messageId: v.id("messages"),
+		eventId: v.id("events"),
+		sourceUserId: v.id("users"),
+		mentionedUserIds: v.array(v.id("users")),
+	},
+	handler: async (ctx, args) => {
+		const event = await ctx.db.get(args.eventId);
+		const sourceUser = await ctx.db.get(args.sourceUserId);
+		const message = await ctx.db.get(args.messageId);
+
+		if (!event || !sourceUser || !message) {
+			return;
+		}
+
+		for (const userId of args.mentionedUserIds) {
+			const user = await ctx.db.get(userId);
+			if (!user) continue;
+
+			// Create in-app notification
+			await ctx.db.insert("notifications", {
+				userId,
+				type: "mention",
+				sourceUserId: args.sourceUserId,
+				eventId: args.eventId,
+				messageId: args.messageId,
+				read: false,
+				createdAt: Date.now(),
+			});
+
+			// Send email notification
+			const emailContent = mentionEmail(event, sourceUser, message.content);
+			try {
+				await resend.sendEmail(ctx, {
+					from: FROM_EMAIL,
+					to: user.email,
+					subject: emailContent.subject,
+					html: emailContent.html,
+				});
+				console.log(`Sent mention notification email to ${user.email}`);
+			} catch (error) {
+				console.error(`Failed to send mention email to ${user.email}:`, error);
+			}
+		}
+	},
+});
+
+// Get unread notifications for current user
+export const getUnreadNotifications = query({
+	args: {},
+	handler: async (ctx) => {
+		const user = await getCurrentUser(ctx);
+		if (!user) {
+			return [];
+		}
+
+		const notifications = await ctx.db
+			.query("notifications")
+			.withIndex("by_user_unread", (q) =>
+				q.eq("userId", user._id).eq("read", false),
+			)
+			.order("desc")
+			.take(10);
+
+		// Enrich with source user and event data
+		const enrichedNotifications = await Promise.all(
+			notifications.map(async (notification) => {
+				const sourceUser = await ctx.db.get(notification.sourceUserId);
+				const event = await ctx.db.get(notification.eventId);
+				const message = notification.messageId
+					? await ctx.db.get(notification.messageId)
+					: null;
+
+				return {
+					...notification,
+					sourceUser: sourceUser
+						? {
+								_id: sourceUser._id,
+								name: sourceUser.name,
+								imageUrl: sourceUser.imageUrl,
+							}
+						: null,
+					event: event
+						? {
+								_id: event._id,
+								title: event.title,
+							}
+						: null,
+					messagePreview: message?.content?.slice(0, 100) ?? null,
+				};
+			}),
+		);
+
+		return enrichedNotifications;
+	},
+});
+
+// Mark a notification as read
+export const markNotificationRead = mutation({
+	args: {
+		notificationId: v.id("notifications"),
+	},
+	handler: async (ctx, args) => {
+		const user = await requireUser(ctx);
+
+		const notification = await ctx.db.get(args.notificationId);
+		if (!notification || notification.userId !== user._id) {
+			throw new Error("Notification not found");
+		}
+
+		await ctx.db.patch(args.notificationId, { read: true });
+	},
+});
+
+// Mark all notifications as read for current user
+export const markAllNotificationsRead = mutation({
+	args: {},
+	handler: async (ctx) => {
+		const user = await requireUser(ctx);
+
+		const unreadNotifications = await ctx.db
+			.query("notifications")
+			.withIndex("by_user_unread", (q) =>
+				q.eq("userId", user._id).eq("read", false),
+			)
+			.collect();
+
+		for (const notification of unreadNotifications) {
+			await ctx.db.patch(notification._id, { read: true });
 		}
 	},
 });

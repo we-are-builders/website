@@ -44,8 +44,8 @@ function DashboardContent() {
 				<div className="space-y-6">
 					<Skeleton className="h-8 w-48" />
 					<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-						{[...Array(4)].map((_, i) => (
-							<Skeleton key={i} className="h-32" />
+						{["s-1", "s-2", "s-3", "s-4"].map((key) => (
+							<Skeleton key={key} className="h-32" />
 						))}
 					</div>
 				</div>
@@ -147,8 +147,8 @@ function DashboardContent() {
 						<CardContent>
 							{myEvents === undefined ? (
 								<div className="space-y-3">
-									{[...Array(3)].map((_, i) => (
-										<Skeleton key={i} className="h-12" />
+									{["s-1", "s-2", "s-3"].map((key) => (
+										<Skeleton key={key} className="h-12" />
 									))}
 								</div>
 							) : myEvents.filter((e) => e?.status === "upcoming").length ===
@@ -192,8 +192,8 @@ function DashboardContent() {
 						<CardContent>
 							{myPresentations === undefined ? (
 								<div className="space-y-3">
-									{[...Array(3)].map((_, i) => (
-										<Skeleton key={i} className="h-12" />
+									{["s-1", "s-2", "s-3"].map((key) => (
+										<Skeleton key={key} className="h-12" />
 									))}
 								</div>
 							) : myPresentations.length === 0 ? (

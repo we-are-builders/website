@@ -151,8 +151,8 @@ function AdminContent() {
 					<CardContent>
 						{users === undefined ? (
 							<div className="space-y-4">
-								{[...Array(5)].map((_, i) => (
-									<Skeleton key={i} className="h-12" />
+								{["s-1", "s-2", "s-3", "s-4", "s-5"].map((key) => (
+									<Skeleton key={key} className="h-12" />
 								))}
 							</div>
 						) : (

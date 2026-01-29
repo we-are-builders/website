@@ -125,3 +125,63 @@ export const getById = query({
 		return await ctx.db.get(args.userId)
 	},
 })
+
+// Search users for @mention autocomplete
+export const searchForMention = query({
+	args: {
+		query: v.string(),
+		eventId: v.optional(v.id('events')),
+	},
+	handler: async (ctx, args) => {
+		const currentUser = await getCurrentUser(ctx)
+		if (!currentUser) {
+			return []
+		}
+
+		const searchQuery = args.query.toLowerCase()
+
+		// If eventId is provided, scope to event attendees
+		if (args.eventId) {
+			const attendees = await ctx.db
+				.query('attendees')
+				.withIndex('by_event', (q) => q.eq('eventId', args.eventId!))
+				.collect()
+
+			const attendeeUserIds = attendees.map((a) => a.userId)
+
+			const users = await Promise.all(
+				attendeeUserIds.map((id) => ctx.db.get(id)),
+			)
+
+			return users
+				.filter(
+					(user): user is NonNullable<typeof user> =>
+						user !== null &&
+						user._id !== currentUser._id &&
+						user.name.toLowerCase().includes(searchQuery),
+				)
+				.slice(0, 10)
+				.map((user) => ({
+					_id: user._id,
+					name: user.name,
+					imageUrl: user.imageUrl,
+				}))
+		}
+
+		// Otherwise, search all users
+		const allUsers = await ctx.db.query('users').collect()
+
+		return allUsers
+			.filter(
+				(user) =>
+					user._id !== currentUser._id &&
+					user.name.toLowerCase().includes(searchQuery),
+			)
+			.slice(0, 10)
+			.map((user) => ({
+				_id: user._id,
+				name: user.name,
+				imageUrl: user.imageUrl,
+			}))
+	},
+})

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "../ui/button";
@@ -33,6 +33,15 @@ export function PresentationForm({
 	const [targetAudience, setTargetAudience] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	const formId = useId();
+	const eventSelectId = `${formId}-event`;
+	const titleId = `${formId}-title`;
+	const descriptionId = `${formId}-description`;
+	const speakerNameId = `${formId}-speakerName`;
+	const durationId = `${formId}-duration`;
+	const speakerBioId = `${formId}-speakerBio`;
+	const targetAudienceId = `${formId}-targetAudience`;
 
 	const upcomingEvents = useQuery(api.events.listUpcoming);
 	const submit = useMutation(api.presentations.submit);
@@ -84,7 +93,7 @@ export function PresentationForm({
 				<form onSubmit={handleSubmit} className="space-y-4">
 					{!eventId && (
 						<div className="space-y-2">
-							<Label htmlFor="event">Event</Label>
+							<Label htmlFor={eventSelectId}>Event</Label>
 							<Select
 								value={selectedEventId}
 								onValueChange={setSelectedEventId}
@@ -105,9 +114,9 @@ export function PresentationForm({
 					)}
 
 					<div className="space-y-2">
-						<Label htmlFor="title">Presentation Title</Label>
+						<Label htmlFor={titleId}>Presentation Title</Label>
 						<Input
-							id="title"
+							id={titleId}
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="Enter your presentation title"
@@ -116,9 +125,9 @@ export function PresentationForm({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="description">Description</Label>
+						<Label htmlFor={descriptionId}>Description</Label>
 						<Textarea
-							id="description"
+							id={descriptionId}
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							placeholder="Describe what your presentation will cover"
@@ -129,9 +138,9 @@ export function PresentationForm({
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="speakerName">Speaker Name</Label>
+							<Label htmlFor={speakerNameId}>Speaker Name</Label>
 							<Input
-								id="speakerName"
+								id={speakerNameId}
 								value={speakerName}
 								onChange={(e) => setSpeakerName(e.target.value)}
 								placeholder="Your name"
@@ -140,7 +149,7 @@ export function PresentationForm({
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="duration">Duration (minutes)</Label>
+							<Label htmlFor={durationId}>Duration (minutes)</Label>
 							<Select value={duration} onValueChange={setDuration}>
 								<SelectTrigger>
 									<SelectValue />
@@ -156,9 +165,9 @@ export function PresentationForm({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="speakerBio">Speaker Bio (optional)</Label>
+						<Label htmlFor={speakerBioId}>Speaker Bio (optional)</Label>
 						<Textarea
-							id="speakerBio"
+							id={speakerBioId}
 							value={speakerBio}
 							onChange={(e) => setSpeakerBio(e.target.value)}
 							placeholder="A brief bio about yourself"
@@ -167,9 +176,9 @@ export function PresentationForm({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="targetAudience">Target Audience</Label>
+						<Label htmlFor={targetAudienceId}>Target Audience</Label>
 						<Input
-							id="targetAudience"
+							id={targetAudienceId}
 							value={targetAudience}
 							onChange={(e) => setTargetAudience(e.target.value)}
 							placeholder="e.g., Beginners, Intermediate developers, etc."

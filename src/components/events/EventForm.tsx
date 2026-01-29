@@ -1,6 +1,6 @@
 import { useMutation } from "convex/react";
 import { ImagePlus, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import {
@@ -24,13 +24,21 @@ interface EventFormProps {
 export function EventForm({ event, onSuccess }: EventFormProps) {
 	const [title, setTitle] = useState(event?.title ?? "");
 	const [description, setDescription] = useState(event?.description ?? "");
+	const [dateTBD, setDateTBD] = useState(event?.dateTBD ?? false);
 	const [date, setDate] = useState(
-		event?.date ? new Date(event.date).toISOString().slice(0, 16) : "",
+		event?.date && !event?.dateTBD
+			? new Date(event.date).toISOString().slice(0, 16)
+			: "",
 	);
 	const [endDate, setEndDate] = useState(
-		event?.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "",
+		event?.endDate && !event?.dateTBD
+			? new Date(event.endDate).toISOString().slice(0, 16)
+			: "",
 	);
-	const [location, setLocation] = useState(event?.location ?? "");
+	const [locationTBD, setLocationTBD] = useState(event?.locationTBD ?? false);
+	const [location, setLocation] = useState(
+		event?.location && !event?.locationTBD ? event.location : "",
+	);
 	const [isVirtual, setIsVirtual] = useState(event?.isVirtual ?? false);
 	const [placeData, setPlaceData] = useState<PlaceResult | null>(
 		event?.latitude && event?.longitude && event?.placeId
@@ -58,6 +66,17 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const formId = useId();
+	const titleId = `${formId}-title`;
+	const descriptionId = `${formId}-description`;
+	const dateTBDId = `${formId}-dateTBD`;
+	const dateId = `${formId}-date`;
+	const endDateId = `${formId}-endDate`;
+	const votingDeadlineId = `${formId}-votingDeadline`;
+	const locationTBDId = `${formId}-locationTBD`;
+	const isVirtualId = `${formId}-isVirtual`;
+	const locationId = `${formId}-location`;
+
 	const create = useMutation(api.events.create);
 	const update = useMutation(api.events.update);
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -84,7 +103,7 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 			const { storageId } = await result.json();
 			setImageId(storageId);
 			setImagePreview(URL.createObjectURL(file));
-		} catch (err) {
+		} catch (_err) {
 			setError("Failed to upload image");
 		} finally {
 			setIsUploading(false);
@@ -100,16 +119,31 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 		e.preventDefault();
 		setError(null);
 
-		if (!date) {
+		// Validate date unless TBD
+		if (!dateTBD && !date) {
 			setError("Please select a start date and time");
 			return;
 		}
 
-		const startTimestamp = new Date(date).getTime();
-		const endTimestamp = endDate ? new Date(endDate).getTime() : undefined;
+		// Validate location unless TBD or virtual
+		if (!locationTBD && !isVirtual && !location) {
+			setError("Please enter a location");
+			return;
+		}
 
-		// Validate end date is after start date
-		if (endTimestamp !== undefined && endTimestamp <= startTimestamp) {
+		// Use placeholder date for TBD (far future - year 9999)
+		const startTimestamp = dateTBD
+			? new Date("9999-12-31T23:59:59").getTime()
+			: new Date(date).getTime();
+		const endTimestamp =
+			dateTBD || !endDate ? undefined : new Date(endDate).getTime();
+
+		// Validate end date is after start date (only if not TBD)
+		if (
+			!dateTBD &&
+			endTimestamp !== undefined &&
+			endTimestamp <= startTimestamp
+		) {
 			setError("End date must be after start date");
 			return;
 		}
@@ -117,21 +151,24 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 		setIsSubmitting(true);
 
 		try {
-			const votingDeadlineTimestamp = votingDeadline
-				? new Date(votingDeadline).getTime()
-				: undefined;
+			const votingDeadlineTimestamp =
+				dateTBD || !votingDeadline
+					? undefined
+					: new Date(votingDeadline).getTime();
 
 			const eventData = {
 				title,
 				description,
 				date: startTimestamp,
 				endDate: endTimestamp,
-				location,
+				dateTBD,
+				location: locationTBD ? "TBD" : location,
+				locationTBD,
 				isVirtual,
 				imageId,
 				votingDeadline: votingDeadlineTimestamp,
-				// Include location coordinates for physical events
-				...(placeData && !isVirtual
+				// Include location coordinates for physical events that are not TBD
+				...(placeData && !isVirtual && !locationTBD
 					? {
 							latitude: placeData.latitude,
 							longitude: placeData.longitude,
@@ -166,9 +203,9 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 			<CardContent>
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="title">Event Title</Label>
+						<Label htmlFor={titleId}>Event Title</Label>
 						<Input
-							id="title"
+							id={titleId}
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="Enter event title"
@@ -177,9 +214,9 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="description">Description</Label>
+						<Label htmlFor={descriptionId}>Description</Label>
 						<Textarea
-							id="description"
+							id={descriptionId}
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							placeholder="Describe what the event is about"
@@ -188,93 +225,121 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 						/>
 					</div>
 
-					<div className="space-y-2">
-						<Label htmlFor="date">Start Date & Time</Label>
-						<Input
-							id="date"
-							type="datetime-local"
-							value={date}
-							onChange={(e) => setDate(e.target.value)}
-							required
+					<div className="flex items-center justify-between">
+						<Label htmlFor={dateTBDId}>Date & Time TBD</Label>
+						<Switch
+							id={dateTBDId}
+							checked={dateTBD}
+							onCheckedChange={setDateTBD}
 						/>
 					</div>
 
-					<div className="space-y-2">
-						<Label htmlFor="endDate">End Date & Time (Optional)</Label>
-						<Input
-							id="endDate"
-							type="datetime-local"
-							value={endDate}
-							onChange={(e) => setEndDate(e.target.value)}
-							min={date}
-						/>
-						<p className="text-xs text-muted-foreground">
-							If set, enables automatic "ongoing" status during the event
-						</p>
-					</div>
+					{!dateTBD && (
+						<>
+							<div className="space-y-2">
+								<Label htmlFor={dateId}>Start Date & Time</Label>
+								<Input
+									id={dateId}
+									type="datetime-local"
+									value={date}
+									onChange={(e) => setDate(e.target.value)}
+									required
+								/>
+							</div>
 
-					<div className="space-y-2">
-						<Label htmlFor="votingDeadline">Voting Deadline (Optional)</Label>
-						<Input
-							id="votingDeadline"
-							type="datetime-local"
-							value={votingDeadline}
-							onChange={(e) => setVotingDeadline(e.target.value)}
-							max={date}
-						/>
-						<p className="text-xs text-muted-foreground">
-							When voting on presentations closes. Defaults to 24 hours before
-							the event starts.
-						</p>
-						{date && !votingDeadline && (
-							<button
-								type="button"
-								onClick={() => {
-									const eventStart = new Date(date);
-									const defaultDeadline = new Date(
-										eventStart.getTime() - 24 * 60 * 60 * 1000,
-									);
-									setVotingDeadline(defaultDeadline.toISOString().slice(0, 16));
-								}}
-								className="text-xs text-primary hover:underline"
-							>
-								Set to 24 hours before event
-							</button>
-						)}
-					</div>
+							<div className="space-y-2">
+								<Label htmlFor={endDateId}>End Date & Time (Optional)</Label>
+								<Input
+									id={endDateId}
+									type="datetime-local"
+									value={endDate}
+									onChange={(e) => setEndDate(e.target.value)}
+									min={date}
+								/>
+								<p className="text-xs text-muted-foreground">
+									If set, enables automatic "ongoing" status during the event
+								</p>
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor={votingDeadlineId}>
+									Voting Deadline (Optional)
+								</Label>
+								<Input
+									id={votingDeadlineId}
+									type="datetime-local"
+									value={votingDeadline}
+									onChange={(e) => setVotingDeadline(e.target.value)}
+									max={date}
+								/>
+								<p className="text-xs text-muted-foreground">
+									When voting on presentations closes. Defaults to 24 hours
+									before the event starts.
+								</p>
+								{date && !votingDeadline && (
+									<button
+										type="button"
+										onClick={() => {
+											const eventStart = new Date(date);
+											const defaultDeadline = new Date(
+												eventStart.getTime() - 24 * 60 * 60 * 1000,
+											);
+											setVotingDeadline(
+												defaultDeadline.toISOString().slice(0, 16),
+											);
+										}}
+										className="text-xs text-primary hover:underline"
+									>
+										Set to 24 hours before event
+									</button>
+								)}
+							</div>
+						</>
+					)}
 
 					<div className="flex items-center justify-between">
-						<Label htmlFor="isVirtual">Virtual Event</Label>
+						<Label htmlFor={isVirtualId}>Virtual Event</Label>
 						<Switch
-							id="isVirtual"
+							id={isVirtualId}
 							checked={isVirtual}
 							onCheckedChange={setIsVirtual}
 						/>
 					</div>
 
-					<div className="space-y-2">
-						<Label htmlFor="location">
-							{isVirtual ? "Meeting Link" : "Location"}
-						</Label>
-						{isVirtual ? (
-							<Input
-								id="location"
-								value={location}
-								onChange={(e) => setLocation(e.target.value)}
-								placeholder="https://meet.google.com/..."
-								required
-							/>
-						) : (
-							<AddressAutocomplete
-								value={location}
-								onChange={setLocation}
-								onPlaceSelect={(place) => {
-									setPlaceData(place);
-								}}
-								placeholder="Enter venue address"
-							/>
-						)}
+					<div className="flex items-center justify-between">
+						<Label htmlFor={locationTBDId}>Location TBD</Label>
+						<Switch
+							id={locationTBDId}
+							checked={locationTBD}
+							onCheckedChange={setLocationTBD}
+						/>
 					</div>
+
+					{!locationTBD && (
+						<div className="space-y-2">
+							<Label htmlFor={locationId}>
+								{isVirtual ? "Meeting Link" : "Location"}
+							</Label>
+							{isVirtual ? (
+								<Input
+									id={locationId}
+									value={location}
+									onChange={(e) => setLocation(e.target.value)}
+									placeholder="https://meet.google.com/..."
+									required
+								/>
+							) : (
+								<AddressAutocomplete
+									value={location}
+									onChange={setLocation}
+									onPlaceSelect={(place) => {
+										setPlaceData(place);
+									}}
+									placeholder="Enter venue address"
+								/>
+							)}
+						</div>
+					)}
 
 					{/* Event Image Upload */}
 					<div className="space-y-2">

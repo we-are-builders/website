@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getCurrentUser, requireUser } from "./lib/auth";
+import { resolveMentions } from "./lib/mentions";
 
 // List messages for an event (requires auth)
 export const listByEvent = query({
@@ -67,12 +69,27 @@ export const send = mutation({
 			throw new Error("Cannot send messages to cancelled events");
 		}
 
+		// Parse mentions from content
+		const mentions = await resolveMentions(ctx, content);
+
 		const messageId = await ctx.db.insert("messages", {
 			eventId: args.eventId,
 			userId: user._id,
 			content,
+			mentions: mentions.length > 0 ? mentions : undefined,
 			createdAt: Date.now(),
 		});
+
+		// Send notifications for mentioned users (excluding self)
+		const mentionsToNotify = mentions.filter((id) => id !== user._id);
+		if (mentionsToNotify.length > 0) {
+			await ctx.scheduler.runAfter(0, internal.notifications.sendMentionNotifications, {
+				messageId,
+				eventId: args.eventId,
+				sourceUserId: user._id,
+				mentionedUserIds: mentionsToNotify,
+			});
+		}
 
 		return messageId;
 	},

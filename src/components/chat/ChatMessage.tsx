@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { parseMentions } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
@@ -55,7 +56,21 @@ export function ChatMessage({
 							: "bg-accent text-foreground",
 					)}
 				>
-					{content}
+					{parseMentions(content).map((segment, index) =>
+						segment.type === "mention" ? (
+							<span
+								key={`${segment.type}-${segment.content}-${index}`}
+								className={cn(
+									"font-semibold",
+									isOwn ? "text-primary-foreground/90" : "text-primary",
+								)}
+							>
+								{segment.content}
+							</span>
+						) : (
+							<span key={`${segment.type}-${index}`}>{segment.content}</span>
+						),
+					)}
 				</div>
 			</div>
 		</div>

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { DashboardLayout } from "../../../components/DashboardLayout";
 import {
 	AlertDialog,
@@ -131,8 +131,8 @@ function ManageEventsContent() {
 
 				{events === undefined ? (
 					<div className="space-y-4">
-						{[...Array(3)].map((_, i) => (
-							<Skeleton key={i} className="h-32" />
+						{["s-1", "s-2", "s-3"].map((key) => (
+							<Skeleton key={key} className="h-32" />
 						))}
 					</div>
 				) : (
@@ -212,13 +212,13 @@ function ManageEventsContent() {
 }
 
 interface EventsListProps {
-	events: any[];
+	events: (Doc<"events"> & { imageUrl?: string | null })[];
 	onDelete: (id: Id<"events">) => void;
 	onStatusChange: (
 		id: Id<"events">,
 		status: "upcoming" | "past" | "cancelled",
 	) => void;
-	currentUser: any;
+	currentUser: Doc<"users"> | null | undefined;
 }
 
 function EventsList({
@@ -255,7 +255,7 @@ function EventsList({
 }
 
 interface EventManageCardProps {
-	event: any;
+	event: Doc<"events"> & { imageUrl?: string | null };
 	onDelete: (id: Id<"events">) => void;
 	onStatusChange: (
 		id: Id<"events">,
@@ -406,7 +406,11 @@ function EventManageCard({
 	);
 }
 
-function PresentationReviewCard({ presentation }: { presentation: any }) {
+function PresentationReviewCard({
+	presentation,
+}: {
+	presentation: Doc<"presentations"> & { event: Doc<"events"> | null };
+}) {
 	const adminApprove = useMutation(api.presentations.adminApprove);
 	const adminReject = useMutation(api.presentations.adminReject);
 

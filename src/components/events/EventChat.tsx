@@ -3,25 +3,25 @@ import { useMutation, useQuery } from "convex/react";
 import { MessageCircle } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { Chat, ChatInput, ChatMessage, ChatMessages } from "../chat";
+import { Chat, ChatMessage, ChatMessages } from "../chat";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { MentionInput } from "../ui/mention-input";
 import { Skeleton } from "../ui/skeleton";
 
 interface EventChatProps {
 	eventId: Id<"events">;
-	eventDate: number;
-	eventStatus: "upcoming" | "past" | "cancelled";
+	eventStatus: "upcoming" | "ongoing" | "past" | "cancelled";
 }
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function EventChat({ eventId, eventDate, eventStatus }: EventChatProps) {
+export function EventChat({ eventId, eventStatus }: EventChatProps) {
 	const messages = useQuery(api.messages.listByEvent, { eventId });
 	const currentUser = useQuery(api.users.current);
 	const sendMessage = useMutation(api.messages.send);
 
-	const isEventActive = eventDate > Date.now() && eventStatus !== "cancelled";
+	const isEventActive = eventStatus === "upcoming" || eventStatus === "ongoing";
 
 	const handleSend = async (content: string) => {
 		await sendMessage({ eventId, content });
@@ -70,8 +70,8 @@ export function EventChat({ eventId, eventDate, eventStatus }: EventChatProps) {
 						</div>
 					) : messages === undefined || messages === null ? (
 						<div className="space-y-4 py-4">
-							{[...Array(3)].map((_, i) => (
-								<div key={i} className="flex gap-3">
+							{["skeleton-1", "skeleton-2", "skeleton-3"].map((key) => (
+								<div key={key} className="flex gap-3">
 									<Skeleton className="h-6 w-6 rounded-full" />
 									<div className="space-y-2">
 										<Skeleton className="h-4 w-24" />
@@ -101,7 +101,11 @@ export function EventChat({ eventId, eventDate, eventStatus }: EventChatProps) {
 									))
 								)}
 							</ChatMessages>
-							<ChatInput onSend={handleSend} disabled={!isEventActive} />
+							<MentionInput
+								onSend={handleSend}
+								disabled={!isEventActive}
+								eventId={eventId}
+							/>
 						</Chat>
 					)}
 				</SignedIn>

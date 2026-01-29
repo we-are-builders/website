@@ -138,12 +138,14 @@ export function PresentationCard({
 					!presentation.adminApproved && (
 						<div className="pt-4 border-t border-border flex gap-2">
 							<button
+								type="button"
 								onClick={onAdminApprove}
 								className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
 							>
 								Admin Approve
 							</button>
 							<button
+								type="button"
 								onClick={onAdminReject}
 								className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
 							>
