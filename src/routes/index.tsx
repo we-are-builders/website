@@ -1,7 +1,14 @@
 import { SignedOut, SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ArrowRight, Calendar, Mic2, Sparkles, Users } from "lucide-react";
+import {
+	ArrowRight,
+	Calendar,
+	Github,
+	Mic2,
+	Sparkles,
+	Users,
+} from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { EventCard } from "../components/events/EventCard";
 import { Button } from "../components/ui/button";
@@ -27,6 +34,15 @@ function HomePage() {
 					/>
 				</div>
 				<div className="relative z-10 text-center px-6 max-w-5xl mx-auto bg-white/10 backdrop-blur-lg rounded-3xl py-12">
+					<a
+						href="https://github.com/we-are-builders/"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="absolute top-4 right-4 p-2 bg-black/10 hover:bg-black/20 rounded-lg transition-colors"
+						aria-label="GitHub"
+					>
+						<Github className="w-6 h-6 text-black" />
+					</a>
 					<div className="inline-flex items-center gap-2 bg-black/5 border border-black/10 rounded-full px-4 py-2 mb-6">
 						<Sparkles className="w-4 h-4 text-purple-600" />
 						<span className="text-sm text-black/80">

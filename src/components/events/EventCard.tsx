@@ -42,15 +42,20 @@ export function EventCard({ event }: EventCardProps) {
 	return (
 		<Card className="hover:shadow-lg transition-shadow overflow-hidden">
 			{/* Event Image or Placeholder */}
-			<div className="relative aspect-video">
+			<Link
+				to="/events/$eventId"
+				params={{ eventId: event._id }}
+				className="block relative aspect-video overflow-hidden cursor-pointer"
+			>
 				{event.imageUrl ? (
 					<img
 						src={event.imageUrl}
 						alt={event.title}
-						className="w-full h-full object-cover"
+						loading="lazy"
+						className="absolute inset-0 w-full h-full object-cover transition-transform hover:scale-105"
 					/>
 				) : (
-					<div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+					<div className="absolute inset-0 w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center transition-colors hover:from-primary/30 hover:to-primary/10">
 						<Calendar className="h-12 w-12 text-primary/40" />
 					</div>
 				)}
@@ -64,7 +69,7 @@ export function EventCard({ event }: EventCardProps) {
 				>
 					{event.status}
 				</Badge>
-			</div>
+			</Link>
 			<CardHeader>
 				<div className="space-y-1">
 					<CardTitle className="text-xl">{event.title}</CardTitle>

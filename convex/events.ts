@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireRole, canManageEvents } from "./lib/auth";
+import { requireRole, canManageEvents, getCurrentUser } from "./lib/auth";
 
 // List all events (public)
 export const list = query({
@@ -70,6 +70,24 @@ export const listUpcoming = query({
 					: null,
 			})),
 		);
+	},
+});
+
+// Check if current user is the event creator
+export const isCreator = query({
+	args: { eventId: v.id("events") },
+	handler: async (ctx, args) => {
+		const user = await getCurrentUser(ctx);
+		if (!user) {
+			return false;
+		}
+
+		const event = await ctx.db.get(args.eventId);
+		if (!event) {
+			return false;
+		}
+
+		return event.createdBy === user._id;
 	},
 });
 

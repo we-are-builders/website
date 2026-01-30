@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, Children } from "react";
 import { cn } from "@/lib/utils";
 
 interface ChatMessagesProps {
@@ -7,18 +7,22 @@ interface ChatMessagesProps {
 }
 
 export function ChatMessages({ children, className }: ChatMessagesProps) {
-	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const childCount = Children.count(children);
 
 	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	});
+		const container = containerRef.current;
+		if (container) {
+			container.scrollTop = container.scrollHeight;
+		}
+	}, [childCount]);
 
 	return (
 		<div
+			ref={containerRef}
 			className={cn("flex-1 overflow-y-auto space-y-4 p-4 min-h-0", className)}
 		>
 			{children}
-			<div ref={messagesEndRef} />
 		</div>
 	);
 }

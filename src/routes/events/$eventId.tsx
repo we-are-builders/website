@@ -6,6 +6,7 @@ import {
 	Clock,
 	MapPin,
 	Mic2,
+	Pencil,
 	Users,
 	Video,
 	Vote,
@@ -48,6 +49,9 @@ function EventDetailPage() {
 		eventId: eventId as Id<"events">,
 	});
 	const isAttending = useQuery(api.attendees.isAttending, {
+		eventId: eventId as Id<"events">,
+	});
+	const isCreator = useQuery(api.events.isCreator, {
 		eventId: eventId as Id<"events">,
 	});
 
@@ -132,11 +136,12 @@ function EventDetailPage() {
 
 				{/* Hero Image */}
 				{event.imageUrl && (
-					<div className="mb-8">
+					<div className="relative aspect-video mb-8 overflow-hidden rounded-lg">
 						<img
 							src={event.imageUrl}
 							alt={event.title}
-							className="w-full aspect-video object-cover rounded-lg"
+							loading="lazy"
+							className="absolute inset-0 w-full h-full object-cover"
 						/>
 					</div>
 				)}
@@ -147,12 +152,22 @@ function EventDetailPage() {
 						<h1 className="text-4xl font-bold text-foreground">
 							{event.title}
 						</h1>
-						<Badge
-							variant={event.status === "upcoming" ? "default" : "secondary"}
-							className={`text-sm ${event.status === "ongoing" ? "bg-green-500 text-white hover:bg-green-600" : ""}`}
-						>
-							{event.status}
-						</Badge>
+						<div className="flex items-center gap-2">
+							{isCreator && (
+								<Link to={`/dashboard/events/${eventId}/edit`}>
+									<Button variant="outline" size="sm">
+										<Pencil className="mr-2 h-4 w-4" />
+										Edit
+									</Button>
+								</Link>
+							)}
+							<Badge
+								variant={event.status === "upcoming" ? "default" : "secondary"}
+								className={`text-sm ${event.status === "ongoing" ? "bg-green-500 text-white hover:bg-green-600" : ""}`}
+							>
+								{event.status}
+							</Badge>
+						</div>
 					</div>
 
 					<div className="flex flex-wrap gap-4 text-muted-foreground mb-6">

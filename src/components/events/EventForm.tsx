@@ -1,8 +1,10 @@
+import imageCompression from "browser-image-compression";
 import { useMutation } from "convex/react";
 import { ImagePlus, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
+import { ImageCropper } from "./ImageCropper";
 import {
 	AddressAutocomplete,
 	type PlaceResult,
@@ -65,6 +67,9 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 	const [isUploading, setIsUploading] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [cropModalOpen, setCropModalOpen] = useState(false);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const formId = useId();
 	const titleId = `${formId}-title`;
@@ -81,7 +86,7 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 	const update = useMutation(api.events.update);
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
-	const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file) return;
 
@@ -91,23 +96,56 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 		}
 
 		setError(null);
+		setSelectedFile(file);
+		setCropModalOpen(true);
+
+		// Reset input so the same file can be selected again
+		if (fileInputRef.current) {
+			fileInputRef.current.value = "";
+		}
+	};
+
+	const handleCropComplete = async (croppedBlob: Blob) => {
+		setCropModalOpen(false);
+		setSelectedFile(null);
 		setIsUploading(true);
 
 		try {
+			// Convert blob to file for compression
+			const croppedFile = new File([croppedBlob], "cropped-image.jpg", {
+				type: "image/jpeg",
+			});
+
+			// Compress image before upload
+			const compressionOptions = {
+				maxSizeMB: 0.8, // Max 800KB
+				maxWidthOrHeight: 1920, // Max dimension
+				useWebWorker: true, // Non-blocking compression
+			};
+			const compressedFile = await imageCompression(
+				croppedFile,
+				compressionOptions,
+			);
+
 			const uploadUrl = await generateUploadUrl();
 			const result = await fetch(uploadUrl, {
 				method: "POST",
-				headers: { "Content-Type": file.type },
-				body: file,
+				headers: { "Content-Type": compressedFile.type },
+				body: compressedFile,
 			});
 			const { storageId } = await result.json();
 			setImageId(storageId);
-			setImagePreview(URL.createObjectURL(file));
+			setImagePreview(URL.createObjectURL(compressedFile));
 		} catch (_err) {
 			setError("Failed to upload image");
 		} finally {
 			setIsUploading(false);
 		}
+	};
+
+	const handleCropCancel = () => {
+		setCropModalOpen(false);
+		setSelectedFile(null);
 	};
 
 	const handleRemoveImage = () => {
@@ -372,15 +410,25 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 									</p>
 								</div>
 								<input
+									ref={fileInputRef}
 									type="file"
 									className="hidden"
 									accept="image/*"
-									onChange={handleImageUpload}
+									onChange={handleFileSelect}
 									disabled={isUploading}
 								/>
 							</label>
 						)}
 					</div>
+
+					{selectedFile && (
+						<ImageCropper
+							file={selectedFile}
+							open={cropModalOpen}
+							onClose={handleCropCancel}
+							onCropComplete={handleCropComplete}
+						/>
+					)}
 
 					{error && (
 						<div className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg">
