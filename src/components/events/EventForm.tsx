@@ -4,7 +4,6 @@ import { ImagePlus, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { ImageCropper } from "./ImageCropper";
 import {
 	AddressAutocomplete,
 	type PlaceResult,
@@ -15,6 +14,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
+import { ImageCropper } from "./ImageCropper";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -37,6 +37,10 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 			? new Date(event.endDate).toISOString().slice(0, 16)
 			: "",
 	);
+	const [endTimeMode, setEndTimeMode] = useState<"duration" | "custom">(
+		event?.endDate ? "custom" : "duration",
+	);
+	const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
 	const [locationTBD, setLocationTBD] = useState(event?.locationTBD ?? false);
 	const [location, setLocation] = useState(
 		event?.location && !event?.locationTBD ? event.location : "",
@@ -58,6 +62,12 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 			? new Date(event.votingDeadline).toISOString().slice(0, 16)
 			: "",
 	);
+	const [votingDeadlineMode, setVotingDeadlineMode] = useState<
+		"preset" | "custom"
+	>(event?.votingDeadline ? "custom" : "preset");
+	const [selectedVotingPreset, setSelectedVotingPreset] = useState<
+		number | null
+	>(null);
 	const [imageId, setImageId] = useState<Id<"_storage"> | undefined>(
 		event?.imageId,
 	);
@@ -173,8 +183,16 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 		const startTimestamp = dateTBD
 			? new Date("9999-12-31T23:59:59").getTime()
 			: new Date(date).getTime();
-		const endTimestamp =
-			dateTBD || !endDate ? undefined : new Date(endDate).getTime();
+		let endTimestamp: number | undefined;
+		if (dateTBD) {
+			endTimestamp = undefined;
+		} else if (endTimeMode === "duration" && selectedDuration !== null) {
+			endTimestamp = new Date(date).getTime() + selectedDuration * 60 * 1000;
+		} else if (endTimeMode === "custom" && endDate) {
+			endTimestamp = new Date(endDate).getTime();
+		} else {
+			endTimestamp = undefined;
+		}
 
 		// Validate end date is after start date (only if not TBD)
 		if (
@@ -189,10 +207,21 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 		setIsSubmitting(true);
 
 		try {
-			const votingDeadlineTimestamp =
-				dateTBD || !votingDeadline
-					? undefined
-					: new Date(votingDeadline).getTime();
+			let votingDeadlineTimestamp: number | undefined;
+			if (dateTBD) {
+				votingDeadlineTimestamp = undefined;
+			} else if (
+				votingDeadlineMode === "preset" &&
+				selectedVotingPreset !== null
+			) {
+				// Subtract hours from event start time
+				votingDeadlineTimestamp =
+					new Date(date).getTime() - selectedVotingPreset * 60 * 60 * 1000;
+			} else if (votingDeadlineMode === "custom" && votingDeadline) {
+				votingDeadlineTimestamp = new Date(votingDeadline).getTime();
+			} else {
+				votingDeadlineTimestamp = undefined;
+			}
 
 			const eventData = {
 				title,
@@ -286,51 +315,115 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor={endDateId}>End Date & Time (Optional)</Label>
-								<Input
-									id={endDateId}
-									type="datetime-local"
-									value={endDate}
-									onChange={(e) => setEndDate(e.target.value)}
-									min={date}
-								/>
+								<Label>Duration</Label>
+								<div className="flex flex-wrap gap-2">
+									{[
+										{ label: "1h", value: 60 },
+										{ label: "1.5h", value: 90 },
+										{ label: "2h", value: 120 },
+										{ label: "3h", value: 180 },
+									].map((duration) => (
+										<Button
+											key={duration.value}
+											type="button"
+											variant={
+												selectedDuration === duration.value &&
+												endTimeMode === "duration"
+													? "default"
+													: "outline"
+											}
+											size="sm"
+											onClick={() => {
+												setEndTimeMode("duration");
+												setSelectedDuration(duration.value);
+												setEndDate("");
+											}}
+										>
+											{duration.label}
+										</Button>
+									))}
+									<Button
+										type="button"
+										variant={endTimeMode === "custom" ? "default" : "outline"}
+										size="sm"
+										onClick={() => {
+											setEndTimeMode("custom");
+											setSelectedDuration(null);
+										}}
+									>
+										Set an end time...
+									</Button>
+								</div>
+								{endTimeMode === "custom" && (
+									<Input
+										id={endDateId}
+										type="datetime-local"
+										value={endDate}
+										onChange={(e) => setEndDate(e.target.value)}
+										min={date}
+										className="mt-2"
+									/>
+								)}
 								<p className="text-xs text-muted-foreground">
 									If set, enables automatic "ongoing" status during the event
 								</p>
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor={votingDeadlineId}>
-									Voting Deadline (Optional)
-								</Label>
-								<Input
-									id={votingDeadlineId}
-									type="datetime-local"
-									value={votingDeadline}
-									onChange={(e) => setVotingDeadline(e.target.value)}
-									max={date}
-								/>
-								<p className="text-xs text-muted-foreground">
-									When voting on presentations closes. Defaults to 24 hours
-									before the event starts.
-								</p>
-								{date && !votingDeadline && (
-									<button
+								<Label>Voting Deadline (Optional)</Label>
+								<div className="flex flex-wrap gap-2">
+									{[
+										{ label: "12h", value: 12 },
+										{ label: "1 day", value: 24 },
+										{ label: "5 days", value: 24 * 5 },
+										{ label: "1 week", value: 24 * 7 },
+									].map((preset) => (
+										<Button
+											key={preset.value}
+											type="button"
+											variant={
+												selectedVotingPreset === preset.value &&
+												votingDeadlineMode === "preset"
+													? "default"
+													: "outline"
+											}
+											size="sm"
+											onClick={() => {
+												setVotingDeadlineMode("preset");
+												setSelectedVotingPreset(preset.value);
+												setVotingDeadline("");
+											}}
+										>
+											{preset.label}
+										</Button>
+									))}
+									<Button
 										type="button"
+										variant={
+											votingDeadlineMode === "custom" ? "default" : "outline"
+										}
+										size="sm"
 										onClick={() => {
-											const eventStart = new Date(date);
-											const defaultDeadline = new Date(
-												eventStart.getTime() - 24 * 60 * 60 * 1000,
-											);
-											setVotingDeadline(
-												defaultDeadline.toISOString().slice(0, 16),
-											);
+											setVotingDeadlineMode("custom");
+											setSelectedVotingPreset(null);
 										}}
-										className="text-xs text-primary hover:underline"
 									>
-										Set to 24 hours before event
-									</button>
+										Set a deadline...
+									</Button>
+								</div>
+								{votingDeadlineMode === "custom" && (
+									<Input
+										id={votingDeadlineId}
+										type="datetime-local"
+										value={votingDeadline}
+										onChange={(e) => setVotingDeadline(e.target.value)}
+										max={date}
+										className="mt-2"
+									/>
 								)}
+								<p className="text-xs text-muted-foreground">
+									When voting on presentations closes (before event starts)
+								</p>
 							</div>
 						</>
 					)}
